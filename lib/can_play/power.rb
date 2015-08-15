@@ -1,4 +1,3 @@
-require 'consul'
 class Power
   include Consul::Power
   attr_accessor :user

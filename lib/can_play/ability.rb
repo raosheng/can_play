@@ -1,4 +1,3 @@
-require 'cancancan'
 class Ability
   include CanCan::Ability
   attr_accessor :user
@@ -7,7 +6,7 @@ class Ability
     self.user = user||User.new
     Role.all.each do |role|
       next unless user.has_role?(role.name)
-      role.role_resources.each do |role_resource|
+      role.role_authorities.each do |role_resource|
         resource = Resource.find_by_name(role_resource.resource_name)
         if resource[:behavior]
           block = resource[:behavior]

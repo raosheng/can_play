@@ -1,3 +1,7 @@
+require 'ror_hack'
+require 'consul'
+require 'cancancan'
+require 'rolify'
 require "can_play/version"
 require "can_play/power"
 require "can_play/ability"
@@ -31,7 +35,16 @@ module CanPlay
     def source(verb_or_verbs, object, &block)
       raise "Need define group first" if @current_group.nil?
       group = @current_group
-      behavior = block
+      behavior = nil
+      if block
+        behavior = lambda do |user, obj|
+          # 在block定义的scope里面，注入user这个变量。
+          old_binding = block.binding
+          old_binding.eval("user=nil;lambda {|v| user = v}").call(user)
+          block.call_with_binding(old_binding, obj)
+        end
+      end
+
       if verb_or_verbs.kind_of?(Array)
         verb_or_verbs.each do |verb|
           add_resource(group, verb, object, behavior)
