@@ -35,9 +35,31 @@ module CanPlay
       @current_group = nil
     end
 
-    def collection(name=nil, &block)
+    def limit(name=nil, &block)
       raise "Need define group first" if @current_group.nil?
       Power.power(name||@current_group[:name], &block)
+    end
+
+    def collection(verb_or_verbs, object, &block)
+      raise "Need define group first" if @current_group.nil?
+      group    = @current_group
+      behavior = nil
+      if block
+        behavior = lambda do |user|
+          # 在block定义的binding里，注入user这个变量。
+          old_binding = block.binding
+          old_binding.eval("user=nil;lambda {|v| user = v}").call(user)
+          block.call_with_binding(old_binding)
+        end
+      end
+
+      if verb_or_verbs.kind_of?(Array)
+        verb_or_verbs.each do |verb|
+          add_resource(group, verb, object, 'collection', behavior)
+        end
+      else
+        add_resource(group, verb_or_verbs, object, 'collection', behavior)
+      end
     end
 
     def member(verb_or_verbs, object, &block)
@@ -55,21 +77,22 @@ module CanPlay
 
       if verb_or_verbs.kind_of?(Array)
         verb_or_verbs.each do |verb|
-          add_resource(group, verb, object, behavior)
+          add_resource(group, verb, object, 'member', behavior)
         end
       else
-        add_resource(group, verb_or_verbs, object, behavior)
+        add_resource(group, verb_or_verbs, object, 'member', behavior)
       end
     end
 
-    def add_resource(group, verb, object, behavior)
+    def add_resource(group, verb, object, type, behavior)
       name     = "#{verb}_#{object.to_s.underscore}"
       resource = {
         name:     name,
         group:    group,
         verb:     verb,
         object:   object,
-        behavior: behavior,
+        type:     type,
+        behavior: behavior
       }.with_indifferent_access
       @resources.keep_if { |i| i[:name] != name }
       @resources << resource
