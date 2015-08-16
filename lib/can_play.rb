@@ -11,30 +11,40 @@ module CanPlay
   extend ActiveSupport::Concern
 
   included do
-    @groups = []
+    @groups        = []
     @current_group = nil
-    @resources = []
+    @resources     = []
   end
 
   module ClassMethods
 
     # 为每个 resource 添加一个 group, 方便管理
-    def group(name, &block)
-      @groups << name
-      @groups.uniq!
-      @current_group = name
-      block.call
+    def group(opts, &block)
+      if opts.is_a?(Hash)
+        opts  = opts.with_indifferent_access
+        group = {name: opts.delete(:name), klass: opts.delete(:klass)}
+      elsif opts.is_a?(Module)
+        name  = opts.try(:table_name) || opts.name.underscore
+        group = {name: name, klass: opts}
+      else
+        # do nothing
+      end
+      @groups << group.with_indifferent_access
+      @groups = @groups.uniq {|i| i[:name]}
+      @current_group = group
+      block.call(group[:klass])
       @current_group = nil
     end
 
+
     def power(&block)
       raise "Need define group first" if @current_group.nil?
-      Power.power(@current_group, &block)
+      Power.power(@current_group[:name], &block)
     end
 
     def source(verb_or_verbs, object, &block)
       raise "Need define group first" if @current_group.nil?
-      group = @current_group
+      group    = @current_group
       behavior = nil
       if block
         behavior = lambda do |user, obj|
@@ -55,15 +65,15 @@ module CanPlay
     end
 
     def add_resource(group, verb, object, behavior)
-      name = "#{verb}_#{object.to_s.underscore}"
+      name     = "#{verb}_#{object.to_s.underscore}"
       resource = {
-        name: name,
-        group: group,
-        verb: verb,
-        object: object,
+        name:     name,
+        group:    group,
+        verb:     verb,
+        object:   object,
         behavior: behavior,
-      }
-      @resources.keep_if {|i| i[:name] != name}
+      }.with_indifferent_access
+      @resources.keep_if { |i| i[:name] != name }
       @resources << resource
     end
 
@@ -85,12 +95,27 @@ module CanPlay
     end
 
     def grouped_resources
-      @resources.group_by {|i| i[:group]}
+      @grouped_resources ||= @resources.group_by { |i| i[:group] }
     end
 
     def my_resources
       @resources
     end
 
+    def grouped_resources_with_chinese_desc
+      grouped_resources.tap do |i|
+        i.each do |group, resources|
+          group[:chinese_desc] = begin
+            name = I18n.t("can_play.class_name.#{group[:name]}", default: '')
+            name = group[:klass].model_name.human if name.blank?
+            name
+          end
+          resources.each do |resource|
+            resource[:chinese_desc] = I18n.t("can_play.authority_name.#{group[:name]}.#{resource[:verb]}", default: '').presence || I18n.t("can_play.authority_name.common.#{resource[:verb]}")
+          end
+        end
+        i.rehash
+      end
+    end
   end
 end
