@@ -1,7 +1,6 @@
 require 'ror_hack'
 require 'consul'
 require 'cancancan'
-require 'rolify'
 require "can_play/version"
 require "can_play/power"
 require "can_play/ability"
@@ -30,25 +29,24 @@ module CanPlay
         # do nothing
       end
       @groups << group.with_indifferent_access
-      @groups = @groups.uniq {|i| i[:name]}
+      @groups        = @groups.uniq { |i| i[:name] }
       @current_group = group
       block.call(group[:klass])
       @current_group = nil
     end
 
-
-    def power(&block)
+    def collection(name=nil, &block)
       raise "Need define group first" if @current_group.nil?
-      Power.power(@current_group[:name], &block)
+      Power.power(name||@current_group[:name], &block)
     end
 
-    def source(verb_or_verbs, object, &block)
+    def member(verb_or_verbs, object, &block)
       raise "Need define group first" if @current_group.nil?
       group    = @current_group
       behavior = nil
       if block
         behavior = lambda do |user, obj|
-          # 在block定义的scope里面，注入user这个变量。
+          # 在block定义的binding里，注入user这个变量。
           old_binding = block.binding
           old_binding.eval("user=nil;lambda {|v| user = v}").call(user)
           block.call_with_binding(old_binding, obj)
@@ -77,17 +75,6 @@ module CanPlay
       @resources << resource
     end
 
-    def each_group(&block)
-      @groups.each do |group|
-        block.call(group)
-      end
-    end
-
-    def each_resources_by(group, &block)
-      resources = @resources.find_all { |r| r[:group] == group }
-      resources.each(&block)
-    end
-
     def find_by_name(name)
       resource = @resources.find { |r| r[:name] == name }
       raise "not found resource by name: #{name}" if resource.nil?
@@ -106,12 +93,12 @@ module CanPlay
       grouped_resources.tap do |i|
         i.each do |group, resources|
           group[:chinese_desc] = begin
-            name = I18n.t("can_play.class_name.#{group[:name]}", default: '')
+            name = I18n.t("can_play.class_name.#{group[:name].singularize}", default: '')
             name = group[:klass].model_name.human if name.blank?
             name
           end
           resources.each do |resource|
-            resource[:chinese_desc] = I18n.t("can_play.authority_name.#{group[:name]}.#{resource[:verb]}", default: '').presence || I18n.t("can_play.authority_name.common.#{resource[:verb]}")
+            resource[:chinese_desc] = I18n.t("can_play.authority_name.#{group[:name].singularize}.#{resource[:verb]}", default: '').presence || I18n.t("can_play.authority_name.common.#{resource[:verb]}")
           end
         end
         i.rehash

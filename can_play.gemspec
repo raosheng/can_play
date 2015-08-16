@@ -23,6 +23,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rake", "~> 10.0"
   spec.add_dependency('cancancan')
   spec.add_dependency('consul')
-  spec.add_dependency('rolify')
   spec.add_dependency('ror_hack')
 end
