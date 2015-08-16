@@ -1,0 +1,17 @@
+---
+zh-CN:
+  can_play:
+    class_name:
+      can_play: 权限管理模型
+
+    authority_name:
+      common:
+        list: 列表查看
+        create: 新建
+        read: 查看
+        update: 修改
+        delete: 删除
+      plan:
+        test: 测试
+
+

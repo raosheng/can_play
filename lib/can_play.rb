@@ -7,12 +7,25 @@ require "can_play/ability"
 require "can_play/controller"
 
 module CanPlay
+
   extend ActiveSupport::Concern
 
   included do
     @groups        = []
     @current_group = nil
     @resources     = []
+  end
+
+  module Config
+    mattr_accessor :user_class_name, :role_class_name, :role_resources_middle_class_name, :resource_class_name
+    @@user_class_name = 'User'
+    @@role_class_name = 'Role'
+    @@role_resources_middle_class_name = 'RoleResource'
+    @@resource_class_name = 'Resource'
+
+    def self.setup
+      yield self
+    end
   end
 
   module ClassMethods

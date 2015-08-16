@@ -1,41 +1,94 @@
-# CanPlay
+can_plan集成了cancancan和consul的功能，使用DSL描述用户对单个类的实例或某个类的操作权限，及可获取的条目的基础的relation对象.
 
-Welcome to your new gem! In this directory, you'll find the files you need to be able to package up your Ruby library into a gem. Put your Ruby code in the file `lib/can_play`. To experiment with that code, run `bin/console` for an interactive prompt.
+## 安装方式
 
-TODO: Delete this and the text above, and describe your gem
+### 安装cancancan
 
-## Installation
+cancancan的使用请参见cancancan主页，在此我们安装后，不需要设置Ability文件，can_play在内部集成了这些设置。
+### 安装consul
 
-Add this line to your application's Gemfile:
+consul的使用请参见consul主页，在此我们安装后，不需要设置power文件，也无需在controller中设置current_power，can_play在内部集成了这些设置。
+### can_play安装
+在gemfile中加入can_play的github地址来安装。
 
-```ruby
-gem 'can_play'
+安装后执行如下命令
+
+```
+rails generate can_play:install
 ```
 
-And then execute:
+会在initializer和locales文件夹下生成文件。
+initializer文件夹下的can_play.rb是can_play的基本配置文件。
+locales下的can_play.zh-Cn.yml文件用于描述权限名称。
 
-    $ bundle
+### DSL文件描述权限
+dsl文件写法如下：
 
-Or install it yourself as:
+	#用哪个类用来描写权限，可在intializer下的can_play.rb文件下描写。
+	class Resource
+	  include CanPlay
 
-    $ gem install can_play
+	  # 所有limit块、collection块和member块中都注入了user这个变量，指向当前登录用户，可直接使用。
 
-## Usage
+	  group Contract do |klass|
 
-TODO: Write usage instructions here
+	  	# 描述某个用户可以查看到哪些合同条目。
+	    limit do
+	      if user.is_admin?
+	        klass.all
+	      elsif user.role? '供应商'
+	        klass.where(emall: user.emall)
+	      elsif user.role? '采购人'
+	        klass.where(department: user.department)
+	      else
+	        klass.none
+	      end
+	    end
 
-## Development
+		# 描述某个用户可以是否而已查看合同列表、创建合同。
+	    collection [:list, :create], klass do
+	      user.is_admin?
+	    end
 
-After checking out the repo, run `bin/setup` to install dependencies. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
+		# 描述某个用户可以是否可以查看、更新某个合同。
+	    member [:read, :update], klass do |obj|
+	      if user.is_admin?
+	        true
+	      elsif user.role? '供应商'
+	        obj.emall.is? user.emall
+	      elsif user.role? '采购人'
+	        obj.department.is? user.department
+	      else
+	        false
+	      end
+	    end
 
-To install this gem onto your local machine, run `bundle exec rake install`. To release a new version, update the version number in `version.rb`, and then run `bundle exec rake release`, which will create a git tag for the version, push git commits and tags, and push the `.gem` file to [rubygems.org](https://rubygems.org).
+		# 描述某个用户可以是否可以删除、终止某个合同。
+	    member [:delete, :terminate], klass do |obj|
+	      user.is_admin?
+	    end
+	  end
 
-## Contributing
+	  group Project do |klass|
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/can_play. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [Contributor Covenant](contributor-covenant.org) code of conduct.
+	    limit do
+	      if user.is_admin?
+	        klass.all
+	      else
+	        klass.none
+	      end
+	    end
 
+	    collection [:list, :create], klass do
+	      user.is_admin?
+	    end
 
-## License
+	    member [:read, :update, :delete, :create_later_documents], klass do |obj|
+	      user.is_admin?
+	    end
+	  end
+  	end
 
-The gem is available as open source under the terms of the [MIT License](http://opensource.org/licenses/MIT).
+### 和角色类之间建立关联
 
+此处的DSL相当于在数据库中的resouces表，记录了所有权限。我们需要通过role_resources这样的中间表，建立角色和资源之间的关联。因此在数据库建立中间表role_resources,使用一个resource_name字段来跟DSL中的权限、资源进行关联。我们再前端页面，只需要调用Resource.grouped_resources_with_chinese_desc就可获取到所有DSL文件中描述的所有权限以及中文描述。再在controller和view中创建权限和role的关联即可（往role_resources中间表写条目）。
