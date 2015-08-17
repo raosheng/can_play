@@ -41,7 +41,8 @@ module CanPlay
       else
         # do nothing
       end
-      @groups << group.with_indifferent_access
+      group = group.with_indifferent_access
+      @groups << group
       @groups        = @groups.uniq { |i| i[:name] }
       @current_group = group
       block.call(group[:klass])
@@ -53,7 +54,7 @@ module CanPlay
       Power.power(name||@current_group[:name], &block)
     end
 
-    def collection(verb_or_verbs, object, &block)
+    def collection(verb_or_verbs, &block)
       raise "Need define group first" if @current_group.nil?
       group    = @current_group
       behavior = nil
@@ -68,14 +69,14 @@ module CanPlay
 
       if verb_or_verbs.kind_of?(Array)
         verb_or_verbs.each do |verb|
-          add_resource(group, verb, object, 'collection', behavior)
+          add_resource(group, verb, group[:klass], 'collection', behavior)
         end
       else
-        add_resource(group, verb_or_verbs, object, 'collection', behavior)
+        add_resource(group, verb_or_verbs, group[:klass], 'collection', behavior)
       end
     end
 
-    def member(verb_or_verbs, object, &block)
+    def member(verb_or_verbs, &block)
       raise "Need define group first" if @current_group.nil?
       group    = @current_group
       behavior = nil
@@ -90,10 +91,10 @@ module CanPlay
 
       if verb_or_verbs.kind_of?(Array)
         verb_or_verbs.each do |verb|
-          add_resource(group, verb, object, 'member', behavior)
+          add_resource(group, verb, group[:klass], 'member', behavior)
         end
       else
-        add_resource(group, verb_or_verbs, object, 'member', behavior)
+        add_resource(group, verb_or_verbs, group[:klass], 'member', behavior)
       end
     end
 
