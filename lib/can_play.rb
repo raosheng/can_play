@@ -38,7 +38,7 @@ module CanPlay
       elsif opts.is_a?(Module)
         can_play_name = I18n.t("can_play.class_name.#{opts.name.underscore.singularize}", default: '')
         model_name = I18n.t("activerecord.models.#{opts.name.underscore.singularize}", default: '')
-        name  = (can_play_name.present?||model_name.present?) ? opts.name.underscore.singularize : opts.try(:table_name)
+        name  = (can_play_name.present?||model_name.present?) ? opts.name.underscore.pluralize : opts.try(:table_name)
         group = {name: name, klass: opts}
       else
         # do nothing
