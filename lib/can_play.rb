@@ -36,7 +36,9 @@ module CanPlay
         opts  = opts.with_indifferent_access
         group = {name: opts.delete(:name), klass: opts.delete(:klass)}
       elsif opts.is_a?(Module)
-        name  = opts.try(:table_name) || opts.name.underscore
+        can_play_name = I18n.t("can_play.class_name.#{opts.name.underscore.singularize}", default: '')
+        model_name = I18n.t("activerecord.models.#{opts.name.underscore.singularize}", default: '')
+        name  = (can_play_name.present?||model_name.present?) ? opts.name.underscore.singularize : opts.try(:table_name)
         group = {name: name, klass: opts}
       else
         # do nothing
