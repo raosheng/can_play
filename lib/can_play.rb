@@ -115,9 +115,7 @@ module CanPlay
     end
 
     def find_by_name(name)
-      resource = @resources.find { |r| r[:name] == name }
-      raise "not found resource by name: #{name}" if resource.nil?
-      resource
+      @resources.find { |r| r[:name] == name }
     end
 
     def grouped_resources
