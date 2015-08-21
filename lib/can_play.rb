@@ -7,26 +7,59 @@ require "can_play/ability"
 require "can_play/controller"
 
 module CanPlay
+  mattr_accessor :resources
+  @@resources = []
 
-  extend ActiveSupport::Concern
+  class << self
+    def included(base)
+      base.class_eval do
+        @groups        = []
+        @current_group = nil
+      end
+      base.extend ClassMethods
+    end
 
-  included do
-    @groups        = []
-    @current_group = nil
-    @resources     = []
+    def find_by_name(name)
+      CanPlay.resources.find { |r| r[:name] == name }
+    end
+
+    def grouped_resources
+      @grouped_resources ||= CanPlay.resources.group_by { |i| i[:group] }
+    end
+
+    def my_resources
+      CanPlay.resources
+    end
+
+    def grouped_resources_with_chinese_desc
+      grouped_resources.tap do |i|
+        i.each do |group, resources|
+          group[:chinese_desc] = begin
+            name = I18n.t("can_play.class_name.#{group[:name].singularize}", default: '')
+            name = group[:klass].model_name.human if name.blank?
+            name
+          end
+          resources.each do |resource|
+            resource[:chinese_desc] = I18n.t("can_play.authority_name.#{group[:name].singularize}.#{resource[:verb]}", default: '').presence || I18n.t("can_play.authority_name.common.#{resource[:verb]}")
+          end
+        end
+        i.rehash
+      end
+    end
   end
 
   module Config
-    mattr_accessor :user_class_name, :role_class_name, :role_resources_middle_class_name, :resource_class_name
+    mattr_accessor :user_class_name, :role_class_name, :role_resources_middle_class_name
     @@user_class_name = 'User'
     @@role_class_name = 'Role'
     @@role_resources_middle_class_name = 'RoleResource'
-    @@resource_class_name = 'Resource'
 
     def self.setup
       yield self
     end
   end
+
+
 
   module ClassMethods
 
@@ -110,36 +143,8 @@ module CanPlay
         type:     type,
         behavior: behavior
       }.with_indifferent_access
-      @resources.keep_if { |i| i[:name] != name }
-      @resources << resource
-    end
-
-    def find_by_name(name)
-      @resources.find { |r| r[:name] == name }
-    end
-
-    def grouped_resources
-      @grouped_resources ||= @resources.group_by { |i| i[:group] }
-    end
-
-    def my_resources
-      @resources
-    end
-
-    def grouped_resources_with_chinese_desc
-      grouped_resources.tap do |i|
-        i.each do |group, resources|
-          group[:chinese_desc] = begin
-            name = I18n.t("can_play.class_name.#{group[:name].singularize}", default: '')
-            name = group[:klass].model_name.human if name.blank?
-            name
-          end
-          resources.each do |resource|
-            resource[:chinese_desc] = I18n.t("can_play.authority_name.#{group[:name].singularize}.#{resource[:verb]}", default: '').presence || I18n.t("can_play.authority_name.common.#{resource[:verb]}")
-          end
-        end
-        i.rehash
-      end
+      CanPlay.resources.keep_if { |i| i[:name] != name }
+      CanPlay.resources << resource
     end
   end
 end
