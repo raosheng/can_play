@@ -136,7 +136,7 @@ module CanPlay
     end
 
     def add_resource(group, verb, object, type, behavior)
-      name     = "#{verb}_#{object.to_s.underscore}"
+      name     = "#{verb}_#{group[:name]}"
       resource = {
         name:     name,
         group:    group,
