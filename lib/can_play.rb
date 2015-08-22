@@ -12,10 +12,12 @@ module CanPlay
 
   class << self
     def included(base)
-      base.class_eval do
+      base.class_eval <<-RUBY
+        include RorHack::ClassLevelInheritableAttributes
+        inheritable_attributes(:groups, :current_group)
         @groups        = []
         @current_group = nil
-      end
+      RUBY
       base.extend ClassMethods
     end
 
