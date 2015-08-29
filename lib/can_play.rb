@@ -30,6 +30,10 @@ module CanPlay
       @grouped_resources ||= CanPlay.resources.multi_group_by(:module_name, :group)
     end
 
+    def splat_grouped_resources
+      @grouped_resources ||= CanPlay.resources.multi_group_by(:group)
+    end
+
     def my_resources
       CanPlay.resources
     end
@@ -49,6 +53,22 @@ module CanPlay
           end
           v.rehash
         end
+      end
+    end
+
+    def splat_grouped_resources_with_chinese_desc
+      splat_grouped_resources.tap do |i|
+        i.each do |group, resources|
+          group[:chinese_desc] = begin
+            name = I18n.t("can_play.class_name.#{group[:name].singularize}", default: '')
+            name = group[:klass].model_name.human if name.blank?
+            name
+          end
+          resources.each do |resource|
+            resource[:chinese_desc] = I18n.t("can_play.authority_name.#{group[:name].singularize}.#{resource[:verb]}", default: '').presence || I18n.t("can_play.authority_name.common.#{resource[:verb]}")
+          end
+        end
+        i.rehash
       end
     end
   end
