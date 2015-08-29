@@ -14,9 +14,10 @@ module CanPlay
     def included(base)
       base.class_eval <<-RUBY
         include RorHack::ClassLevelInheritableAttributes
-        inheritable_attributes(:groups, :current_group)
+        inheritable_attributes(:groups, :current_group, :module_name)
         @groups        = []
         @current_group = nil
+        @module_name = ''
       RUBY
       base.extend ClassMethods
     end
@@ -26,7 +27,7 @@ module CanPlay
     end
 
     def grouped_resources
-      @grouped_resources ||= CanPlay.resources.group_by { |i| i[:group] }
+      @grouped_resources ||= CanPlay.resources.multi_group_by(:module_name, :group)
     end
 
     def my_resources
@@ -34,18 +35,20 @@ module CanPlay
     end
 
     def grouped_resources_with_chinese_desc
-      grouped_resources.tap do |i|
-        i.each do |group, resources|
-          group[:chinese_desc] = begin
-            name = I18n.t("can_play.class_name.#{group[:name].singularize}", default: '')
-            name = group[:klass].model_name.human if name.blank?
-            name
+      grouped_resources.tap do |e|
+        e.each do |i, v|
+          v.each do |group, resources|
+            group[:chinese_desc] = begin
+              name = I18n.t("can_play.class_name.#{group[:name].singularize}", default: '')
+              name = group[:klass].model_name.human if name.blank?
+              name
+            end
+            resources.each do |resource|
+              resource[:chinese_desc] = I18n.t("can_play.authority_name.#{group[:name].singularize}.#{resource[:verb]}", default: '').presence || I18n.t("can_play.authority_name.common.#{resource[:verb]}")
+            end
           end
-          resources.each do |resource|
-            resource[:chinese_desc] = I18n.t("can_play.authority_name.#{group[:name].singularize}.#{resource[:verb]}", default: '').presence || I18n.t("can_play.authority_name.common.#{resource[:verb]}")
-          end
+          v.rehash
         end
-        i.rehash
       end
     end
   end
@@ -69,24 +72,23 @@ module CanPlay
     def group(opts, &block)
       if opts.is_a?(Hash)
         opts  = opts.with_indifferent_access
-        group = {name: opts.delete(:name), klass: opts.delete(:klass)}
+        group =  OpenStruct.new(name: opts.delete(:name), klass: opts.delete(:klass))
       elsif opts.is_a?(Module)
         name = opts.try(:table_name).presence || opts.to_s.underscore.gsub('/', '_').pluralize
-        group = {name: name, klass: opts}
+        group =  OpenStruct.new(name: name, klass: opts)
       else
         # do nothing
       end
-      group = group.with_indifferent_access
       @groups << group
-      @groups        = @groups.uniq { |i| i[:name] }
+      @groups        = @groups.uniq(&:name)
       @current_group = group
-      block.call(group[:klass])
+      block.call(group.klass)
       @current_group = nil
     end
 
     def limit(name=nil, &block)
       raise "Need define group first" if @current_group.nil?
-      Power.power(name||@current_group[:name], &block)
+      Power.power(name||@current_group.name, &block)
     end
 
     def collection(verb_or_verbs, &block)
@@ -104,10 +106,10 @@ module CanPlay
 
       if verb_or_verbs.kind_of?(Array)
         verb_or_verbs.each do |verb|
-          add_resource(group, verb, group[:klass], 'collection', behavior)
+          add_resource(group, verb, group.klass, 'collection', behavior)
         end
       else
-        add_resource(group, verb_or_verbs, group[:klass], 'collection', behavior)
+        add_resource(group, verb_or_verbs, group.klass, 'collection', behavior)
       end
     end
 
@@ -126,24 +128,25 @@ module CanPlay
 
       if verb_or_verbs.kind_of?(Array)
         verb_or_verbs.each do |verb|
-          add_resource(group, verb, group[:klass], 'member', behavior)
+          add_resource(group, verb, group.klass, 'member', behavior)
         end
       else
-        add_resource(group, verb_or_verbs, group[:klass], 'member', behavior)
+        add_resource(group, verb_or_verbs, group.klass, 'member', behavior)
       end
     end
 
     def add_resource(group, verb, object, type, behavior)
-      name     = "#{verb}_#{group[:name]}"
-      resource = {
+      name     = "#{verb}_#{group.name}"
+      resource = OpenStruct.new(
+        module_name: module_name,
         name:     name,
         group:    group,
         verb:     verb,
         object:   object,
         type:     type,
         behavior: behavior
-      }.with_indifferent_access
-      CanPlay.resources.keep_if { |i| i[:name] != name }
+      )
+      CanPlay.resources.keep_if { |i| i.name != name }
       CanPlay.resources << resource
     end
   end
