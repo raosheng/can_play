@@ -23,7 +23,7 @@ module CanPlay
     end
 
     def find_by_name(name)
-      CanPlay.resources.find { |r| r[:name] == name }
+      CanPlay.resources.find { |r| r.name == name }
     end
 
     def grouped_resources
@@ -38,13 +38,13 @@ module CanPlay
       grouped_resources.tap do |e|
         e.each do |i, v|
           v.each do |group, resources|
-            group[:chinese_desc] = begin
-              name = I18n.t("can_play.class_name.#{group[:name].singularize}", default: '')
-              name = group[:klass].model_name.human if name.blank?
+            group.chinese_desc = begin
+              name = I18n.t("can_play.class_name.#{group.name.to_s.singularize}", default: '')
+              name = group.klass.model_name.human if name.blank?
               name
             end
             resources.each do |resource|
-              resource[:chinese_desc] = I18n.t("can_play.authority_name.#{group[:name].singularize}.#{resource[:verb]}", default: '').presence || I18n.t("can_play.authority_name.common.#{resource[:verb]}")
+              resource.chinese_desc = I18n.t("can_play.authority_name.#{group.name.to_s.singularize}.#{resource.verb}", default: '').presence || I18n.t("can_play.authority_name.common.#{resource.verb}")
             end
           end
           v.rehash
@@ -72,7 +72,7 @@ module CanPlay
     def group(opts, &block)
       if opts.is_a?(Hash)
         opts  = opts.with_indifferent_access
-        group =  OpenStruct.new(name: opts.delete(:name), klass: opts.delete(:klass))
+        group =  OpenStruct.new(name: opts.delete(:name).to_s, klass: opts.delete(:klass))
       elsif opts.is_a?(Module)
         name = opts.try(:table_name).presence || opts.to_s.underscore.gsub('/', '_').pluralize
         group =  OpenStruct.new(name: name, klass: opts)
