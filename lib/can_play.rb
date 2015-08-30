@@ -74,10 +74,11 @@ module CanPlay
   end
 
   module Config
-    mattr_accessor :user_class_name, :role_class_name, :role_resources_middle_class_name
+    mattr_accessor :user_class_name, :role_class_name, :role_resources_relation_name, :super_roles
     @@user_class_name = 'User'
     @@role_class_name = 'Role'
-    @@role_resources_middle_class_name = 'RoleResource'
+    @@role_resources_relation_name = 'role_resources'
+    @@super_roles = []
 
     def self.setup
       yield self

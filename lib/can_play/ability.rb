@@ -4,9 +4,12 @@ class Ability
 
   def initialize(user)
     self.user = user||CanPlay::Config.user_class_name.constantize.new
+    CanPlay::Config.super_roles.each do |role_name|
+      can(:manage, :all) if user.role?(role_name)
+    end
     CanPlay::Config.role_class_name.constantize.all.each do |role|
       next unless user.role?(role.name)
-      role.send(CanPlay::Config.role_resources_middle_class_name.underscore.pluralize).each do |role_resource|
+      role.send(CanPlay::Config.role_resources_relation_name).each do |role_resource|
         resource = CanPlay.find_by_name(role_resource.resource_name)
         next unless resource
         if resource[:type] == 'collection'
